@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Messaging Service</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            height: 100vh;
+            margin: 0;
+            background-color: #f4f4f4;
+        }
+
+        #chat-container {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            height: 100%;
+            width: 100%;
+        }
+
+        #messages {
+            flex-grow: 1;
+            overflow-y: auto;
+            border: 1px solid #ccc;
+            padding: 10px;
+            background: white;
+        }
+
+        #input-container {
+            display: flex;
+            width: 100%;
+            padding: 10px;
+            box-sizing: border-box;
+        }
+
+        #message-input {
+            flex-grow: 1;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            margin-right: 10px;
+        }
+
+        button {
+            padding: 10px 20px;
+            border: none;
+            background-color: #28a745;
+            color: white;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #218838;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        label#image-upload-label {
+            padding: 10px 20px;
+            background-color: #28a745;
+            color: white;
+            border-radius: 5px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 10px;
+        }
+
+        label#image-upload-label:hover {
+            background-color: #218838;
+        }
+
+        img.thumbnail {
+            max-width: 150px;
+            max-height: 150px;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div id="chat-container">
+        <div id="messages"></div>
+        <div id="input-container">
+            <input type="text" id="message-input" placeholder="Type your message..." onkeydown="handleKeyDown(event)">
+            <label for="image-upload" id="image-upload-label">Upload Image</label>
+            <input type="file" id="image-upload" accept="image/png">
+            <button onclick="sendMessage()">Send</button>
+        </div>
+    </div>
+    <script src="https://cdn.socket.io/4.0.1/socket.io.min.js"></script>
+    <script>
+        var socket = io();
+
+        socket.on('message', function(msg) {
+            var messages = document.getElementById('messages');
+            var messageElement = document.createElement('div');
+            if (msg.startsWith('data:image/')) {
+                var img = new Image();
+                img.src = msg;
+                img.classList.add('thumbnail');
+                messageElement.appendChild(img);
+            } else {
+                messageElement.textContent = msg;
+            }
+            messages.appendChild(messageElement);
+            messages.scrollTop = messages.scrollHeight; // Auto-scroll to the bottom
+        });
+
+        socket.on('clear', function() {
+            var messages = document.getElementById('messages');
+            messages.innerHTML = '';
+        });
+
+        document.getElementById('image-upload').addEventListener('change', function(event) {
+            var file = event.target.files[0];
+            var reader = new FileReader();
+            reader.onload = function(e) {
+                socket.send(e.target.result);
+            };
+            reader.readAsDataURL(file);
+        });
+
+        function sendMessage() {
+            var input = document.getElementById('message-input');
+            var message = input.value.trim();
+            if (message !== '') {
+                if (message.toUpperCase() === 'CLEAR CHAT') {
+                    clearChat();
+                } else {
+                    socket.send(message);
+                }
+                input.value = '';
+            }
+        }
+
+        function handleKeyDown(event) {
+            if (event.key === 'Enter') {
+                sendMessage();
+            }
+        }
+
+        function clearChat() {
+            socket.emit('clear');
+        }
+    </script>
+</body>
+</html>
